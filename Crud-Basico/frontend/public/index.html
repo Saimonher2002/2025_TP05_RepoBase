@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Tareas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 14px;
+            margin-left: 5px;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .tasks-list {
+            margin-top: 40px;
+        }
+
+        .task-item {
+            background: #f9fafb;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+
+        .task-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .task-item.completed {
+            opacity: 0.7;
+            border-left-color: #10b981;
+        }
+
+        .task-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .task-item.completed .task-title {
+            text-decoration: line-through;
+            color: #6b7280;
+        }
+
+        .task-description {
+            color: #6b7280;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        #editForm {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #editForm.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Lista de Tareas</h1>
+        
+        <form id="taskForm">
+            <div class="form-group">
+                <label for="title">Título</label>
+                <input type="text" id="title" required placeholder="Ej: Comprar leche">
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Descripción</label>
+                <textarea id="description" placeholder="Detalles de la tarea..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">➕ Agregar Tarea</button>
+        </form>
+
+        <div class="tasks-list">
+            <div id="tasksList"></div>
+        </div>
+    </div>
+
+    <div id="editForm">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Editar Tarea</h2>
+                <button class="close-btn" onclick="closeEditForm()">×</button>
+            </div>
+            <div class="form-group">
+                <label for="editTitle">Título</label>
+                <input type="text" id="editTitle" required>
+            </div>
+            <div class="form-group">
+                <label for="editDescription">Descripción</label>
+                <textarea id="editDescription"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button onclick="saveEdit()" class="btn btn-primary" style="flex: 1;">Guardar</button>
+                <button onclick="closeEditForm()" class="btn btn-danger" style="flex: 1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080/api/tasks';
+        let editingTaskId = null;
+
+        async function loadTasks() {
+            try {
+                const response = await fetch(API_URL);
+                const tasks = await response.json();
+                displayTasks(tasks);
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+            }
+        }
+
+        function displayTasks(tasks) {
+            const tasksList = document.getElementById('tasksList');
+            
+            if (!tasks || tasks.length === 0) {
+                tasksList.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <h3>No hay tareas todavía</h3>
+                        <p>¡Agrega tu primera tarea arriba!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            tasksList.innerHTML = tasks.map(task => `
+                <div class="task-item ${task.completed ? 'completed' : ''}">
+                    <div class="task-title">${escapeHtml(task.title)}</div>
+                    <div class="task-description">${escapeHtml(task.description || '')}</div>
+                    <div class="task-actions">
+                        <button onclick="toggleTask(${task.id}, ${!task.completed})" class="btn btn-small ${task.completed ? 'btn-warning' : 'btn-success'}">
+                            ${task.completed ? '↩️ Reabrir' : '✓ Completar'}
+                        </button>
+                        <button onclick="editTask(${task.id})" class="btn btn-small btn-warning">✏️ Editar</button>
+                        <button onclick="deleteTask(${task.id})" class="btn btn-small btn-danger">🗑️ Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const task = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                completed: false
+            };
+
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(task)
+                });
+
+                document.getElementById('taskForm').reset();
+                loadTasks();
+            } catch (error) {
+                console.error('Error creating task:', error);
+            }
+        });
+
+        async function toggleTask(id, completed) {
+            try {
+                const response = await fetch(`${API_URL}/${id}`);
+                const task = await response.json();
+                
+                task.completed = completed;
+                
+                await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(task)
+                });
+
+                loadTasks();
+            } catch (error) {
+                console.error('Error toggling task:', error);
+            }
+        }
+
+        async function editTask(id) {
+            try {
+                const response = await fetch(`${API_URL}/${id}`);
+                const task = await response.json();
+                
+                document.getElementById('editTitle').value = task.title;
+                document.getElementById('editDescription').value = task.description || '';
+                editingTaskId = id;
+                
+                document.getElementById('editForm').classList.add('active');
+            } catch (error) {
+                console.error('Error loading task:', error);
+            }
+        }
+
+        async function saveEdit() {
+            if (!editingTaskId) return;
+
+            try {
+                const response = await fetch(`${API_URL}/${editingTaskId}`);
+                const task = await response.json();
+                
+                task.title = document.getElementById('editTitle').value;
+                task.description = document.getElementById('editDescription').value;
+                
+                await fetch(`${API_URL}/${editingTaskId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(task)
+                });
+
+                closeEditForm();
+                loadTasks();
+            } catch (error) {
+                console.error('Error updating task:', error);
+            }
+        }
+
+        function closeEditForm() {
+            document.getElementById('editForm').classList.remove('active');
+            editingTaskId = null;
+        }
+
+        async function deleteTask(id) {
+            if (!confirm('¿Estás seguro de eliminar esta tarea?')) return;
+
+            try {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                loadTasks();
+            } catch (error) {
+                console.error('Error deleting task:', error);
+            }
+        }
+
+        loadTasks();
+    </script>
+</body>
+</html>
