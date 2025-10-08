@@ -269,10 +269,26 @@
         async function loadTasks() {
             try {
                 const response = await fetch(API_URL);
+                
+                if (!response.ok) {
+                    console.error('Error del servidor:', response.status);
+                    displayTasks([]);
+                    return;
+                }
+                
                 const tasks = await response.json();
+                
+                // Validar que tasks sea un array
+                if (!Array.isArray(tasks)) {
+                    console.error('La respuesta no es un array:', tasks);
+                    displayTasks([]);
+                    return;
+                }
+                
                 displayTasks(tasks);
             } catch (error) {
                 console.error('Error loading tasks:', error);
+                displayTasks([]);
             }
         }
 
@@ -323,16 +339,25 @@
             };
 
             try {
-                await fetch(API_URL, {
+                const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(task)
                 });
 
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error('Error del servidor:', error);
+                    alert('Error al crear la tarea: ' + (error.error || 'Error desconocido'));
+                    return;
+                }
+
                 document.getElementById('taskForm').reset();
-                loadTasks();
+                await loadTasks();
+                console.log('✅ Tarea creada exitosamente');
             } catch (error) {
                 console.error('Error creating task:', error);
+                alert('No se pudo conectar con el servidor. ¿Está corriendo en puerto 8080?');
             }
         });
 
