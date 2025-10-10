@@ -1,19 +1,19 @@
-# Dependencies
-node_modules/
+# # Dependencies
+# node_modules/
 
-# Environment variables
-.env
+# # Environment variables
+# .env
 
-# Logs
-*.log
-npm-debug.log*
+# # Logs
+# *.log
+# npm-debug.log*
 
-# OS
-.DS_Store
-Thumbs.db
+# # OS
+# .DS_Store
+# Thumbs.db
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+# # IDE
+# .vscode/
+# .idea/
+# *.swp
+# *.swo
