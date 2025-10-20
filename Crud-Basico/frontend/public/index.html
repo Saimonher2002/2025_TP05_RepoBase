@@ -262,179 +262,210 @@
         </div>
     </div>
 
-    <script>
-        const API_URL = 'http://localhost:8080/api/tasks';
-        let editingTaskId = null;
+<script>
+    // ========== CONFIGURACIÓN DE API ==========
+    function getApiUrl() {
+        const hostname = window.location.hostname;
+        
+        // Desarrollo local
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'http://localhost:8080/api/tasks';
+        }
+        
+        // Azure QA
+        if (hostname.includes('apptp05-frontendqa')) {
+            return 'https://apptp5-backendqa.azurewebsites.net/api/tasks';
+        }
+        
+        // Azure PROD
+        if (hostname.includes('apptp05-frontendprod')) {
+            return 'https://apptp05-backendprod.azurewebsites.net/api/tasks';
+        }
+        
+        // Fallback
+        return 'http://localhost:8080/api/tasks';
+    }
+    
+    const API_URL = getApiUrl();
+    console.log('🔗 API URL:', API_URL);
+    
+    let editingTaskId = null;
 
-        async function loadTasks() {
-            try {
-                const response = await fetch(API_URL);
-                
-                if (!response.ok) {
-                    console.error('Error del servidor:', response.status);
-                    displayTasks([]);
-                    return;
-                }
-                
-                const tasks = await response.json();
-                
-                // Validar que tasks sea un array
-                if (!Array.isArray(tasks)) {
-                    console.error('La respuesta no es un array:', tasks);
-                    displayTasks([]);
-                    return;
-                }
-                
-                displayTasks(tasks);
-            } catch (error) {
-                console.error('Error loading tasks:', error);
+    // ========== CARGAR TAREAS ==========
+    async function loadTasks() {
+        try {
+            const response = await fetch(API_URL);
+            
+            if (!response.ok) {
+                console.error('Error del servidor:', response.status);
                 displayTasks([]);
+                return;
             }
+            
+            const tasks = await response.json();
+            
+            if (!Array.isArray(tasks)) {
+                console.error('La respuesta no es un array:', tasks);
+                displayTasks([]);
+                return;
+            }
+            
+            displayTasks(tasks);
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+            displayTasks([]);
+        }
+    }
+
+    // ========== MOSTRAR TAREAS ==========
+    function displayTasks(tasks) {
+        const tasksList = document.getElementById('tasksList');
+        
+        if (!tasks || tasks.length === 0) {
+            tasksList.innerHTML = `
+                <div class="empty-state">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <h3>No hay tareas todavía</h3>
+                    <p>¡Agrega tu primera tarea arriba!</p>
+                </div>
+            `;
+            return;
         }
 
-        function displayTasks(tasks) {
-            const tasksList = document.getElementById('tasksList');
-            
-            if (!tasks || tasks.length === 0) {
-                tasksList.innerHTML = `
-                    <div class="empty-state">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                        </svg>
-                        <h3>No hay tareas todavía</h3>
-                        <p>¡Agrega tu primera tarea arriba!</p>
-                    </div>
-                `;
+        tasksList.innerHTML = tasks.map(task => `
+            <div class="task-item ${task.completed ? 'completed' : ''}">
+                <div class="task-title">${escapeHtml(task.title)}</div>
+                <div class="task-description">${escapeHtml(task.description || '')}</div>
+                <div class="task-actions">
+                    <button onclick="toggleTask('${task._id}', ${!task.completed})" class="btn btn-small ${task.completed ? 'btn-warning' : 'btn-success'}">
+                        ${task.completed ? '↩️ Reabrir' : '✓ Completar'}
+                    </button>
+                    <button onclick="editTask('${task._id}')" class="btn btn-small btn-warning">✏️ Editar</button>
+                    <button onclick="deleteTask('${task._id}')" class="btn btn-small btn-danger">🗑️ Eliminar</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ========== CREAR TAREA ==========
+    document.getElementById('taskForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const task = {
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            completed: false
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(task)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Error del servidor:', error);
+                alert('Error al crear la tarea: ' + (error.error || 'Error desconocido'));
                 return;
             }
 
-            tasksList.innerHTML = tasks.map(task => `
-                <div class="task-item ${task.completed ? 'completed' : ''}">
-                    <div class="task-title">${escapeHtml(task.title)}</div>
-                    <div class="task-description">${escapeHtml(task.description || '')}</div>
-                    <div class="task-actions">
-                        <button onclick="toggleTask(${task.id}, ${!task.completed})" class="btn btn-small ${task.completed ? 'btn-warning' : 'btn-success'}">
-                            ${task.completed ? '↩️ Reabrir' : '✓ Completar'}
-                        </button>
-                        <button onclick="editTask(${task.id})" class="btn btn-small btn-warning">✏️ Editar</button>
-                        <button onclick="deleteTask(${task.id})" class="btn btn-small btn-danger">🗑️ Eliminar</button>
-                    </div>
-                </div>
-            `).join('');
+            document.getElementById('taskForm').reset();
+            await loadTasks();
+            console.log('✅ Tarea creada exitosamente');
+        } catch (error) {
+            console.error('Error creating task:', error);
+            alert('No se pudo conectar con el servidor. ¿Está corriendo en puerto 8080?');
         }
+    });
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        document.getElementById('taskForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+    // ========== CAMBIAR ESTADO ==========
+    async function toggleTask(id, completed) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`);
+            const task = await response.json();
             
-            const task = {
-                title: document.getElementById('title').value,
-                description: document.getElementById('description').value,
-                completed: false
-            };
+            task.completed = completed;
+            
+            await fetch(`${API_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(task)
+            });
 
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(task)
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    console.error('Error del servidor:', error);
-                    alert('Error al crear la tarea: ' + (error.error || 'Error desconocido'));
-                    return;
-                }
-
-                document.getElementById('taskForm').reset();
-                await loadTasks();
-                console.log('✅ Tarea creada exitosamente');
-            } catch (error) {
-                console.error('Error creating task:', error);
-                alert('No se pudo conectar con el servidor. ¿Está corriendo en puerto 8080?');
-            }
-        });
-
-        async function toggleTask(id, completed) {
-            try {
-                const response = await fetch(`${API_URL}/${id}`);
-                const task = await response.json();
-                
-                task.completed = completed;
-                
-                await fetch(`${API_URL}/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(task)
-                });
-
-                loadTasks();
-            } catch (error) {
-                console.error('Error toggling task:', error);
-            }
+            loadTasks();
+        } catch (error) {
+            console.error('Error toggling task:', error);
         }
+    }
 
-        async function editTask(id) {
-            try {
-                const response = await fetch(`${API_URL}/${id}`);
-                const task = await response.json();
-                
-                document.getElementById('editTitle').value = task.title;
-                document.getElementById('editDescription').value = task.description || '';
-                editingTaskId = id;
-                
-                document.getElementById('editForm').classList.add('active');
-            } catch (error) {
-                console.error('Error loading task:', error);
-            }
+    // ========== EDITAR TAREA ==========
+    async function editTask(id) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`);
+            const task = await response.json();
+            
+            document.getElementById('editTitle').value = task.title;
+            document.getElementById('editDescription').value = task.description || '';
+            editingTaskId = id;
+            
+            document.getElementById('editForm').classList.add('active');
+        } catch (error) {
+            console.error('Error loading task:', error);
         }
+    }
 
-        async function saveEdit() {
-            if (!editingTaskId) return;
+    async function saveEdit() {
+        if (!editingTaskId) return;
 
-            try {
-                const response = await fetch(`${API_URL}/${editingTaskId}`);
-                const task = await response.json();
-                
-                task.title = document.getElementById('editTitle').value;
-                task.description = document.getElementById('editDescription').value;
-                
-                await fetch(`${API_URL}/${editingTaskId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(task)
-                });
+        try {
+            const response = await fetch(`${API_URL}/${editingTaskId}`);
+            const task = await response.json();
+            
+            task.title = document.getElementById('editTitle').value;
+            task.description = document.getElementById('editDescription').value;
+            
+            await fetch(`${API_URL}/${editingTaskId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(task)
+            });
 
-                closeEditForm();
-                loadTasks();
-            } catch (error) {
-                console.error('Error updating task:', error);
-            }
+            closeEditForm();
+            loadTasks();
+        } catch (error) {
+            console.error('Error updating task:', error);
         }
+    }
 
-        function closeEditForm() {
-            document.getElementById('editForm').classList.remove('active');
-            editingTaskId = null;
+    function closeEditForm() {
+        document.getElementById('editForm').classList.remove('active');
+        editingTaskId = null;
+    }
+
+    // ========== ELIMINAR TAREA ==========
+    async function deleteTask(id) {
+        if (!confirm('¿Estás seguro de eliminar esta tarea?')) return;
+
+        try {
+            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            loadTasks();
+        } catch (error) {
+            console.error('Error deleting task:', error);
         }
+    }
 
-        async function deleteTask(id) {
-            if (!confirm('¿Estás seguro de eliminar esta tarea?')) return;
-
-            try {
-                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-                loadTasks();
-            } catch (error) {
-                console.error('Error deleting task:', error);
-            }
-        }
-
-        loadTasks();
-    </script>
+    // ========== INICIALIZAR ==========
+    loadTasks();
+</script>
 </body>
 </html>
